@@ -1,0 +1,196 @@
+Contents
+========
+-General Information
+-Dependencies
+-Installation
+-How To Use
+-Permissions and File Ownership
+-Security
+-Todo
+-Known Bugs
+-Troubleshooting
+
+
+General Information
+===================
+This is a very basic file system. The file system allows users to
+access files stored on the file server from remote machines. The goal
+of this file system is to give file system developers some form of
+basic distributed file system, which can be later extended as per the
+developer's requirement, through an API. We will provide some core
+features - hence the name "CoreFS". The Corefs API allows one to
+easily integrate/add new functions (e.g., encryption, checking of
+access permissions, establishing secure sessions) without having to
+make any modifications to CoreFS.  The API allows a developer to trap
+or replace only the required file system and network calls and perform
+localized modifications. Hopefully, this file system can prove to be
+good starting point for someone who is planning to implement
+experimental networked file systems using FUSE.
+
+Note, this file system does not include any security, file I/O
+synchronization, cache coherency, and many other advanced
+functionalities typically provided by networked file sytems. This is
+not a file system to be deployed in practice as is; rather, it is for
+the programmers to extend as they wish. A complete API is included in
+CoreFS for this purpose. The included basic encrypted file system is
+intended to provide an example of the usage of the API. In the future,
+we may extend CoreFS to add some nice security features.  CoreFS is
+distributed in the hope that it will be useful, but without any form
+of warranty.
+
+Questions or comments: please see contact us.
+
+
+Dependencies
+============
+Requires FUSE library and modules. See http://fuse.sourceforge.net/
+This code was tested with version 2.5.3.
+
+
+Installation
+============
+> cd src
+> make
+
+
+How To Use
+==========
+To start server:
+> bin/dserver
+
+To start client:
+> bin/dclient [-S <server address>] <mount point>
+
+For example, if the server is running on server1.umn.edu, and we want
+to mount it at ~/mnt, we would run:
+> bin/dclient -S server1.umn.edu ~/mnt
+
+Once initially connected, we can explore server1.
+> ls ~/mnt/server1.umn.edu/
+
+Each server mounted is represented as a directory under the
+mountpoint. To mount another server, simply type:
+> ls ~/mnt/server2.umn.edu
+
+This will mount server2 and then run 'ls' on it. If a server is not
+running on server2, or server2 is not reachable, ls will return an
+appropriate error.
+
+Now if we type
+> ls ~/mnt/
+we will see:
+ server1.umn.edu/
+ server2.umn.edu/
+
+If server1.umn.edu is also recognized on the client's machine as just
+server1, we have the option of substituting server1 where ever
+server1.umn.edu is being used.
+Examples:
+> bin/dclient -S server1 ~/mnt
+> ls ~/mnt/server1/somefile
+
+In these examples, server1 will be understood and expanded to
+server1.umn.edu.
+
+To disconnect from server1, type:
+> rmdir ~/mnt/server1.umn.edu
+
+This call will close the connection to the server, and remove the
+server from the mnt directory.
+
+To shutdown the entire client (not just one server) type:
+> fusermount -u <mount point>
+
+This will close all connections and FUSE will unmount the mount
+point. fusermount is a program supplied by FUSE.
+
+
+Permissions and File Ownership
+==============================
+Right now, permissions are handled in a very simple manner.  This may
+be addressed in future releases.
+
+Clients connecting to a server have the same permissions as whoever
+started the server program!
+
+To the client, every file appears to belong to the client.  This is
+due to lack of coordinated UIDs and GIDs between clients and
+servers. User "Joe" may have UID 1002 on the server and UID 1004 on
+the client.  When the server sends information back for an "ls -l"
+call, it will report the UIDs of the files' owners.  Suppose user
+Alice has UID 1002 on the client.  If the client didn't behave the way
+it did, all files owned by Joe on the server will appear to be owned
+by Alice on the client.  To avoid this, we just make it look like Joe
+owns everything on the server.
+
+This approach has its drawbacks as well, and may be addressed in
+future releases.  One drawback is that although it may look like Joe
+owns a file which has read and writer permissions for owner, he may
+not be the actual owner, and when he tries to write to it he will get
+a "permission denied" error.
+
+Developers can choose to implement their own permission checking
+mechanisms and implement them through the API. For example, one can
+trap the up_check_access() function of the API and implement their own
+access control mechanism (see api_readme.pdf for more details).
+
+
+Security
+========
+**NONE**
+
+
+Todo
+====
+There are some features that may be added in the future, however, this
+file system is not meant to be used alone.  While it provides the
+framework for a network file system, it is meant to be extended through
+its API.
+
+Here are a few topics which have plans to be worked on:
+-Symlink
+-Server Multithreading
+-Permissions
+-Locking
+
+
+Known Bugs
+==========
+One bug with older versions of FUSE (< 2.7?) is after unmounting the
+client with "fusermount -u <mount point>" fuse_main returns error, and
+the usage for CoreFS is printed.  This should be fixed in later
+versions of FUSE, and is outside our control.
+See www.nabble.com/Re:-fuse_main()-returns-error-on-unmount...-p12758724.html
+
+Symlinks work for making a link on the client machine to a file on the
+server.  They do not work, and should not work, for making a link on
+the server to a file on the client or to a different server (think
+about what that would mean), and do not yet work for making a link on
+the server to a file on the same server.  This last function will be
+fixed in future releases.
+
+
+Troubleshooting
+===============
+Error:
+When trying to start the client:
+"fusermount: failed to access mountpoint <mount point> Permission
+denied"
+Solution:
+This is generally due to a pre-existing FUSE file system (such as
+CoreFS) being mounted at that directory, or never being properly
+unmounted. Run
+> fusermount -u <mount point>
+to unmount it.
+
+Error:
+When trying to start the server:
+"ERROR: bind on control socket failed: Address already in use"
+Solution:
+This is because either there is another instance of the server
+running, the port is being used by some other program, or a server was
+recently killed.  In the last case, waiting anywhere from five seconds
+to a minute or two should allow the OS to properly release the port of
+the finished server.  Then starting the server will succeed.
+Alternatively, a different port can be specified via the -P argument
+to the server and the client.
