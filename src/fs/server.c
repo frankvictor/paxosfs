@@ -64,6 +64,7 @@
 
 #include "list.h"
 #include "protocol.h"
+#include "log.h"
 
 #include "common.h"
 #ifdef HAVE_SETXATTR
@@ -131,6 +132,7 @@ int handle_read(COMMCTX* ctx, corefs_packet* cmd)
     /* Check with the security layer if the user should be allowed to
      * access the file */
   
+
     if(my_ops.up_check_access){
         if(my_ops.up_check_access(ctx, &(cmd->payload.request.user_ids), &ret, cmd->payload.request.op.fileop.path, NULL, cmd->payload.request.type) != PROCEED){
             fprintf(stderr, "check_access: access denied\n");
@@ -145,7 +147,9 @@ int handle_read(COMMCTX* ctx, corefs_packet* cmd)
     unsigned int size = cmd->payload.request.op.fileop.size;
     unsigned int packet_size = 0;
 
-  
+		//log
+		log_read(path, offset, size);
+
 #ifdef DEBUG
     dprintf(stderr, "READ: file \'%s\'.\n", path);
 #endif
@@ -256,6 +260,8 @@ int handle_write(COMMCTX* ctx, corefs_packet* cmd)
         return -1;
     }
 
+		//log
+		log_write(path, offset, size, data->payload.request.op.raw);
   
     ret = fwrite(data->payload.request.op.raw, 1, size, f);
 
@@ -334,7 +340,11 @@ int handle_setxattr(COMMCTX* ctx, corefs_packet* cmd)
         }
     }
   
-  
+		//log
+		//future will need fault tolerance
+    ret = log_setxattr (path, attrname, data->payload.request.op.raw, sizeofvalue,
+                    cmd->payload.request.op.xattr.flags);
+		
     ret = setxattr (path, attrname, data->payload.request.op.raw, sizeofvalue,
                     cmd->payload.request.op.xattr.flags);
 
@@ -488,6 +498,9 @@ int handle_removexattr(COMMCTX* ctx, corefs_packet* cmd)
         }
     }
   
+		//log
+    ret = log_removexattr(path, attrname);
+
     ret = removexattr(path, attrname);
     if (ret < 0) {
         dprintf(stderr, "removexattr failed path[%s] attr. name [%s].\n",
@@ -713,6 +726,10 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
                 return -1;
             }
         }
+
+				//log
+				ret = log_chmod(simp->path1, simp->mode1);
+
         ret = my_ops.chmod(simp->path1, simp->mode1);
         break;
       
@@ -729,6 +746,10 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
                 return -1;
             }
         }
+
+				//log
+        ret = log_truncate(simp->path1, simp->offset);
+
         ret = my_ops.truncate(simp->path1, simp->offset);
         break;
 
@@ -750,6 +771,10 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
         // (if mode bits are all zeros, set to 0666).
         mode = simp->mode1;
         if (!(mode & 0666)) mode |= 0666;
+
+				//log
+        ret = log_mknod(simp->path1, mode, 0);
+
         ret = my_ops.mknod(simp->path1, mode, 0);
         break;
 
@@ -766,6 +791,10 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
                 return -1;
             }
         }
+
+				//log
+        ret = log_unlink(simp->path1);
+
         ret = my_ops.unlink(simp->path1);
 
         break;
@@ -785,6 +814,10 @@ int handle_simple(COMMCTX* ctx, corefs_packet* cmd)
                 return -1;
             }
         }
+
+				//log
+        ret = log_symlink(simp->path1, simp->path2);
+
         ret = my_ops.symlink(simp->path1, simp->path2);
         break;
       
@@ -1005,14 +1038,26 @@ int check_sanity(corefs_packet * cmd)
 
 int handle_command(COMMCTX *ctx, corefs_packet *cmd, int packetsize)
 {
-
  
     int ret = check_sanity(cmd);
     if(ret){
         error_reply(ctx, cmd->header.sequence, ret);
         return 0;
     }
-   
+
+		//log the cmd
+
+		//exe the cmd from file
+    /*
+		 *bzero(cmd, BUFFERSIZE);
+		 *FILE *f = fopen(log_path,"rw"); 
+		 *if(f == NULL) {
+		 *  printf("Error in opening file: %s", log_path);
+		 *}
+		 *fgets(cmd, BUFFERSIZE, f);
+		 *fclose(f);
+     */
+
   
     // process request
 #ifdef DEBUG_NETWORK
@@ -1387,6 +1432,8 @@ int main(int argc, char **argv)
                             /* Use separate buffers  */
                             decap_corefs_request(buffer + header_size, cmd); 
                             /* handle the received command */
+														/*log_cmd(buffer);*/
+														printf("cmd_size: %d\n", strlen(buffer));
                             handle_command(temp_ctx, cmd, packetsize);
                         }
                     }

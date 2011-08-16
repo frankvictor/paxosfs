@@ -1,0 +1,4 @@
+log format:
+WRITE<>path<>offset<>size<>data
+SETXATTR<>path<>attrname<>data<>sizeofvalue<>flags
+REMOVEXATTR<>path<>attrname

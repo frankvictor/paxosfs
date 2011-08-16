@@ -8,7 +8,7 @@ clean:
 
 #client: client.o corefs.o common.o
 
-dserver: server.o common.o dummy_mod.o list.o
+dserver: server.o common.o dummy_mod.o list.o log.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 	cp $@ $(INSTALLDIR)
 	@echo -e "[Server linked]\n"

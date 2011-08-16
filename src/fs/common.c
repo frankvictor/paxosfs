@@ -671,7 +671,7 @@ int socket_read(int sock, char* buffer, size_t size)
     int read=0;
     int ret;
 
-    //dprintf(stderr, "in socket_read(size=%i). [sock=%i]\n",size,sock);
+    /*fprintf(stderr, "in socket_read(size=%i). [sock=%i]\n",size,sock);*/
 
     while (read < size) {
         if ((ret=recv(sock, buffer+read, (size_t)size-read, 0)) < 0) {
@@ -700,6 +700,7 @@ int socket_write(int sock, char* buffer, size_t size)
 	int ret;
 
 	//dprintf(stderr, "in socket_write(). [sock=%i]\n",sock);
+	/*fprintf(stderr, "in socket_write(size=%i). [sock=%i]\n",size,sock);*/
 
 	while (written < size) {
 		if ((ret=send(sock, buffer+written, (size_t)size-written, 0)) <= 0) {
