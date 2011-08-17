@@ -48,7 +48,6 @@
 #ifndef __LIST_H
 #define __LIST_H
 
-
 //typedef struct node file_info_list;
 typedef struct node server_list;
 typedef struct node list_tail;

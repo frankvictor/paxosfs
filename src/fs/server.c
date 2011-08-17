@@ -147,9 +147,6 @@ int handle_read(COMMCTX* ctx, corefs_packet* cmd)
     unsigned int size = cmd->payload.request.op.fileop.size;
     unsigned int packet_size = 0;
 
-		//log
-		log_read(path, offset, size);
-
 #ifdef DEBUG
     dprintf(stderr, "READ: file \'%s\'.\n", path);
 #endif
@@ -261,7 +258,7 @@ int handle_write(COMMCTX* ctx, corefs_packet* cmd)
     }
 
 		//log
-		log_write(path, offset, size, data->payload.request.op.raw);
+		/*log_write(path, offset, size, data->payload.request.op.raw);*/
   
     ret = fwrite(data->payload.request.op.raw, 1, size, f);
 
@@ -1432,8 +1429,6 @@ int main(int argc, char **argv)
                             /* Use separate buffers  */
                             decap_corefs_request(buffer + header_size, cmd); 
                             /* handle the received command */
-														/*log_cmd(buffer);*/
-														printf("cmd_size: %d\n", strlen(buffer));
                             handle_command(temp_ctx, cmd, packetsize);
                         }
                     }
