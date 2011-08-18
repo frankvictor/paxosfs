@@ -82,8 +82,12 @@
 //maximum length for a server address
 #define MAXADDR 100
 
+#define SERVER_NUM 2
+
 corefs_client_operations my_ops; /* This does not need any locking */
 int server_port = SERVER_PORT;
+
+char s_addr_list[SERVER_NUM][MAXADDR] = {"localhost", "10.0.1.201"};
 
 /* local path for .corefs directory - set in main() */
 char *local_path;
@@ -452,9 +456,16 @@ int do_write(const char* path, const char* buf, size_t size, off_t offset,
     corefs_packet req_packet;
     memset(&req_packet, 0, sizeof(req_packet));
     int ret;
+		int i;
     unsigned int packet_size;
-    server_data *sd=NULL;
 
+    server_data *sd[SERVER_NUM];
+		for(i = 0; i < SERVER_NUM; i++) {
+			sd[i] = NULL;
+		}
+		
+
+		/*log_write(path, offset, size, buf);*/
     /* Get user info from the upper layer */
     if(my_ops.up_get_user_info)
         my_ops.up_get_user_info(&(req_packet.payload.request.user_ids),
@@ -470,9 +481,11 @@ int do_write(const char* path, const char* buf, size_t size, off_t offset,
         return do_write_local(path, buf, size, offset, fi);
     }
 
-    ret = check_setup(s_addr, &sd);
-    if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
-    if (ret < 0) return -EIO;
+		for(i = 0; i < SERVER_NUM; i++) {
+			ret = check_setup(s_addr_list[i], &sd[i]);
+			if (ret == -EHOSTUNREACH) return -EHOSTUNREACH;
+			if (ret < 0) return -EIO;
+		}
 
 
     /* Send the write command first */
@@ -492,10 +505,13 @@ int do_write(const char* path, const char* buf, size_t size, off_t offset,
     print_packet(req_packet);
 #endif
   
-    if (send_packet(sd->ctx, buffer, packet_size) <=0) {
-        dprintf(stderr, "error sending packet.\n");
-        return -EIO;
-    }
+
+		for(i = 0; i < SERVER_NUM; i++) {
+			if (send_packet(sd[i]->ctx, buffer, packet_size) <=0) {
+				dprintf(stderr, "error sending packet.\n");
+				return -EIO;
+			}
+		}
 
     /* Now send the data */
     packet_size =  build_request_data((corefs_packet*) buffer, buf, size);
@@ -503,12 +519,15 @@ int do_write(const char* path, const char* buf, size_t size, off_t offset,
     ret = encap_corefs_header(out_buffer,(corefs_packet*)buffer);
     encap_corefs_request(out_buffer + ret, (corefs_packet*)buffer);
   
-    if (send_packet(sd->ctx, out_buffer, packet_size) <=0) {
-        dprintf(stderr, "error sending packet.\n");
-        return -EIO;
-    }
+		for(i = 0; i < SERVER_NUM; i++) {
+			if (send_packet(sd[i]->ctx, out_buffer, packet_size) <=0) {
+				dprintf(stderr, "error sending packet.\n");
+				return -EIO;
+			}
+		}
+
     memset(buffer, 0, BUFFERSIZE);
-    if ((ret=client_receive_specified(sd->ctx, buffer, COREFS_RESPONSE_STATUS))
+    if ((ret=client_receive_specified(sd[0]->ctx, buffer, COREFS_RESPONSE_STATUS))
         < 0) {
         dprintf(stderr, "write returned error.\n");
         return ret;

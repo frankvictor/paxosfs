@@ -13,7 +13,7 @@ dserver: server.o common.o dummy_mod.o list.o log.o
 	cp $@ $(INSTALLDIR)
 	@echo -e "[Server linked]\n"
 
-dclient: client.o corefs.o common.o dummy_mod.o list.o
+dclient: client.o corefs.o common.o dummy_mod.o list.o log.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 	cp $@ $(INSTALLDIR)
 	@echo -e "[Client linked]\n"

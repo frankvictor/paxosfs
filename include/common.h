@@ -64,10 +64,6 @@ inline int donothing(FILE* f, const char* fmt, ...);
 #define dprintf donothing
 #endif
 
-#define master localhost
-#define slave1 10.0.1.201
-#define slave2 10.0.1.202
-
 /*  **CAUTION: standard buffer size 128k ***/
 /*  133120 = 130*1024. */
 /*  This limit is because fuse single request limits 128K data
