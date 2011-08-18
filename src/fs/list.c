@@ -179,6 +179,7 @@ int get_info_ptr(list_head * head,  list_tail ** tail, const char *addr,
         else // this is the last element
           *tail = node->prev;
         //insert node at the front
+        //why move the node to the front?
         node->next = head->next;
         node->next->prev = node;
         head->next = node;

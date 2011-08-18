@@ -55,7 +55,7 @@ typedef struct node list_head;
 struct node 
 {
   char  *server_addr;
-  unsigned int alength;
+  unsigned int alength; //address length
   void * data;
   server_list * next;
   server_list * prev;
